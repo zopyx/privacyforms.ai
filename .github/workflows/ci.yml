@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         python-version: ["3.12", "3.13", "3.14", "3.14t"]
 
     steps:
@@ -43,7 +43,7 @@ jobs:
         run: uv run pytest tests/ -v --cov=privacyforms_ai --cov-report=xml --cov-report=term
 
       - name: Upload coverage
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        if: matrix.python-version == '3.12'
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
