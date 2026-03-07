@@ -6,6 +6,7 @@ import pytest
 @pytest.fixture
 def mock_models(monkeypatch):
     """Fixture to mock llm.get_models() for testing."""
+
     class MockModel:
         def __init__(self, model_id, name):
             self.model_id = model_id

@@ -9,14 +9,14 @@ from .ai import AI
 
 @click.group()
 @click.version_option(version="0.1.0", prog_name="privacyforms-ai")
-def cli():
+def cli() -> None:
     """PrivacyForms AI - LLM integration CLI."""
     pass
 
 
 @cli.command()
 @click.option("--json-output", "-j", is_flag=True, help="Output as JSON")
-def models(json_output: bool):
+def models(json_output: bool) -> None:
     """List all registered LLM models."""
     models_list = AI.get_models()
 
@@ -36,7 +36,7 @@ def models(json_output: bool):
 @click.argument("model_key")
 @click.argument("prompt")
 @click.option("--system", "-s", help="System prompt")
-def prompt(model_key: str, prompt: str, system: str | None):
+def prompt(model_key: str, prompt: str, system: str | None) -> None:
     """Send a prompt to a model.
 
     Example:
@@ -44,19 +44,16 @@ def prompt(model_key: str, prompt: str, system: str | None):
     """
     try:
         model = AI.get_model(model_key)
-        if system:
-            response = model.prompt(prompt, system=system)
-        else:
-            response = model.prompt(prompt)
+        response = model.prompt(prompt, system=system) if system else model.prompt(prompt)
         click.echo(response.text())
     except Exception as e:
-        raise click.ClickException(str(e))
+        raise click.ClickException(str(e)) from e
 
 
 @cli.command()
 @click.argument("model_key")
 @click.option("--system", "-s", help="System prompt to set the conversation context")
-def chat(model_key: str, system: str | None):
+def chat(model_key: str, system: str | None) -> None:
     """Start an interactive chat session with a model.
 
     Example:
@@ -71,12 +68,17 @@ def chat(model_key: str, system: str | None):
     try:
         conversation = AI.get_conversation(model_key, system=system)
     except Exception as e:
-        raise click.ClickException(str(e))
+        raise click.ClickException(str(e)) from e
 
     click.echo(click.style(f"Starting chat with model: {model_key}", fg="green", bold=True))
     if system:
         click.echo(click.style(f"System prompt: {system}", fg="cyan"))
-    click.echo(click.style("Type /quit, /exit, or /q to end the session. Type /clear to reset history.", fg="bright_black"))
+    click.echo(
+        click.style(
+            "Type /quit, /exit, or /q to end the session. Type /clear to reset history.",
+            fg="bright_black",
+        )
+    )
     click.echo("-" * 50)
 
     while True:

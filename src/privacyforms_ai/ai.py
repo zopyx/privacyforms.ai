@@ -1,7 +1,5 @@
 """AI module for managing LLM models."""
 
-from typing import List, Dict
-
 import llm
 
 
@@ -9,7 +7,7 @@ class AI:
     """AI class for interacting with LLM models via the llm library."""
 
     @staticmethod
-    def get_models() -> List[Dict[str, str]]:
+    def get_models() -> list[dict[str, str]]:
         """Get a list of all registered LLM models.
 
         Returns:
@@ -22,10 +20,12 @@ class AI:
         for model in models:
             # model_id is the key, repr gives a human-readable name
             name = str(model).strip("<>")  # Convert <OpenAI Chat: gpt-4o> to OpenAI Chat: gpt-4o
-            result.append({
-                "key": model.model_id,
-                "name": name,
-            })
+            result.append(
+                {
+                    "key": model.model_id,
+                    "name": name,
+                }
+            )
         return result
 
     @staticmethod
@@ -60,5 +60,5 @@ class AI:
         model = llm.get_model(model_key)
         conversation = model.conversation()
         if system:
-            conversation.system = system
+            conversation.system = system  # type: ignore[attr-defined]
         return conversation
