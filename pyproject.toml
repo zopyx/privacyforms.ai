@@ -1,5 +1,5 @@
 [project]
-name = "privacyforms-ai"
+name = "privacyforms.ai"
 version = "0.1.0"
 description = "PrivacyForms AI - LLM integration module"
 readme = "README.md"
@@ -25,11 +25,12 @@ dev = [
 privacyforms-ai = "privacyforms_ai.cli:cli"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/privacyforms_ai"]
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["privacyforms_ai*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
