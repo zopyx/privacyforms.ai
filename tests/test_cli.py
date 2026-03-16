@@ -7,6 +7,17 @@ from click.testing import CliRunner
 
 from privacyforms_ai.cli import cli
 
+PROMPT_LOG_PREFIX = "[privacyforms-ai] prompt "
+
+
+def parse_prompt_logs(output: str) -> list[dict[str, object]]:
+    """Parse prompt logs from the combined CLI output stream."""
+    return [
+        json.loads(line[len(PROMPT_LOG_PREFIX) :])
+        for line in output.splitlines()
+        if line.startswith(PROMPT_LOG_PREFIX)
+    ]
+
 
 @pytest.fixture
 def runner():
@@ -87,6 +98,15 @@ class TestPromptCommand:
         result = runner.invoke(cli, ["prompt", "gpt-4o", "Hello!", "--system", "Be helpful"])
         assert result.exit_code == 0
         assert system_received == ["Be helpful"]
+
+        prompt_logs = parse_prompt_logs(result.output)
+        assert prompt_logs == [
+            {
+                "kind": "model",
+                "text": "Hello!",
+                "system": "Be helpful",
+            }
+        ]
 
     def test_prompt_model_error(self, runner, monkeypatch):
         """Test prompt with invalid model."""
@@ -194,6 +214,15 @@ class TestChatCommand:
         assert result.exit_code == 0
         assert "System prompt: Be helpful" in result.output
         assert system_set == ["Be helpful"]
+
+        prompt_logs = parse_prompt_logs(result.output)
+        assert prompt_logs == [
+            {
+                "kind": "conversation",
+                "system": "Be helpful",
+                "text": "Hello",
+            }
+        ]
 
     def test_chat_clear_command(self, runner, monkeypatch):
         """Test the /clear command."""

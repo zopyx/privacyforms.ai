@@ -1,8 +1,22 @@
 """Tests for the AI class."""
 
+import hashlib
+import json
+
 import pytest
 
 from privacyforms_ai.ai import AI
+
+
+def parse_prompt_log(console_output: str) -> dict[str, object]:
+    """Parse the most recent prompt log line from stderr output."""
+    prompt_logs = [
+        line[len(AI._LOG_PREFIX) :]
+        for line in console_output.splitlines()
+        if line.startswith(AI._LOG_PREFIX)
+    ]
+    assert prompt_logs, "Expected at least one prompt log line"
+    return json.loads(prompt_logs[-1])
 
 
 class TestAI:
@@ -128,3 +142,102 @@ class TestGetConversation:
 
         with pytest.raises(Exception, match="Model not found"):
             AI.get_conversation("invalid-model")
+
+
+class TestPromptLogging:
+    """Test cases for prompt logging helpers."""
+
+    def test_send_prompt_logs_text_and_system(self, capsys):
+        """Test that model prompts are always logged."""
+        prompt_calls = []
+
+        class MockResponse:
+            text = "Hello back!"
+
+        class MockModel:
+            model_id = "gpt-4o"
+
+            def prompt(self, prompt, system=None):
+                prompt_calls.append((prompt, system))
+                return MockResponse()
+
+        response = AI.send_prompt(MockModel(), "Hello", system="Be helpful")
+        assert response.text == "Hello back!"
+        assert prompt_calls == [("Hello", "Be helpful")]
+
+        payload = parse_prompt_log(capsys.readouterr().err)
+        assert payload == {
+            "kind": "model",
+            "model": "gpt-4o",
+            "system": "Be helpful",
+            "text": "Hello",
+        }
+
+    def test_send_prompt_logs_binary_payload_in_short_form(self, capsys):
+        """Test that binary payloads are summarized instead of printed raw."""
+        payload_bytes = b"\x00\x01\x02"
+        prompt_calls = []
+
+        class MockResponse:
+            text = "Binary accepted"
+
+        class MockModel:
+            model_id = "gpt-4o"
+
+            def prompt(self, prompt, attachments=None):
+                prompt_calls.append((prompt, attachments))
+                return MockResponse()
+
+        AI.send_prompt(MockModel(), "Inspect this", attachments=[payload_bytes])
+        assert prompt_calls == [("Inspect this", [payload_bytes])]
+
+        payload = parse_prompt_log(capsys.readouterr().err)
+        assert payload == {
+            "attachments": [
+                {
+                    "kind": "binary",
+                    "sha256": hashlib.sha256(payload_bytes).hexdigest()[:12],
+                    "size_bytes": len(payload_bytes),
+                }
+            ],
+            "kind": "model",
+            "model": "gpt-4o",
+            "text": "Inspect this",
+        }
+
+    def test_prompt_with_attachment_logs_short_attachment_summary(self, capsys, tmp_path):
+        """Test that file attachments are logged with concise metadata only."""
+        file_path = tmp_path / "sample.pdf"
+        file_path.write_bytes(b"%PDF-1.7")
+        prompt_calls = []
+
+        class MockResponse:
+            def text(self):
+                return "Processed attachment"
+
+        class MockModel:
+            model_id = "gpt-4o"
+
+            def prompt(self, prompt, attachments=None):
+                prompt_calls.append((prompt, attachments))
+                return MockResponse()
+
+        result = AI.prompt_with_attachment(MockModel(), "Review this file", file_path)
+        assert result == "Processed attachment"
+        assert prompt_calls[0][0] == "Review this file"
+        assert len(prompt_calls[0][1]) == 1
+
+        payload = parse_prompt_log(capsys.readouterr().err)
+        assert payload == {
+            "attachments": [
+                {
+                    "kind": "attachment",
+                    "mime_type": "application/pdf",
+                    "name": "sample.pdf",
+                    "size_bytes": file_path.stat().st_size,
+                }
+            ],
+            "kind": "model",
+            "model": "gpt-4o",
+            "text": "Review this file",
+        }

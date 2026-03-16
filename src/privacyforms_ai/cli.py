@@ -44,8 +44,8 @@ def prompt(model_key: str, prompt: str, system: str | None) -> None:
     """
     try:
         model = AI.get_model(model_key)
-        response = model.prompt(prompt, system=system) if system else model.prompt(prompt)
-        click.echo(response.text())
+        response = AI.send_prompt(model, prompt, system=system)
+        click.echo(AI.extract_response_text(response))
     except Exception as e:
         raise click.ClickException(str(e)) from e
 
@@ -109,8 +109,10 @@ def chat(model_key: str, system: str | None) -> None:
 
         # Send message to the model
         try:
-            response = conversation.prompt(user_input)
-            click.echo(click.style("\nAI: ", fg="blue", bold=True) + response.text())
+            response = AI.send_conversation_prompt(conversation, user_input)
+            click.echo(
+                click.style("\nAI: ", fg="blue", bold=True) + AI.extract_response_text(response)
+            )
         except Exception as e:
             click.echo(click.style(f"\nError: {e}", fg="red"), err=True)
 

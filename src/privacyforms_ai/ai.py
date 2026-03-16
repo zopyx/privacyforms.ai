@@ -1,13 +1,19 @@
 """AI module for managing LLM models."""
 
+import hashlib
+import json
+import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import llm
 
 
 class AI:
     """AI class for interacting with LLM models via the llm library."""
+
+    _LOG_PREFIX = "[privacyforms-ai] prompt "
 
     @staticmethod
     def get_models() -> list[dict[str, str]]:
@@ -99,12 +105,13 @@ class AI:
         filename = path.name
 
         attachment_cls = llm.Attachment
+        attachment_factory = cast(Any, attachment_cls)
         candidates = [
-            lambda: attachment_cls(path=str(path)),
-            lambda: attachment_cls(data, mime_type, filename),
-            lambda: attachment_cls(filename, data, mime_type),
-            lambda: attachment_cls(data, filename=filename, mimetype=mime_type),
-            lambda: attachment_cls(filename=filename, content=data, type=mime_type),
+            lambda: attachment_factory(path=str(path)),
+            lambda: attachment_factory(data, mime_type, filename),
+            lambda: attachment_factory(filename, data, mime_type),
+            lambda: attachment_factory(data, filename=filename, mimetype=mime_type),
+            lambda: attachment_factory(filename=filename, content=data, type=mime_type),
         ]
 
         for builder in candidates:
@@ -132,6 +139,52 @@ class AI:
             return attachment_cls(**kwargs)
 
         raise ValueError("Could not create attachment with available constructors")
+
+    @staticmethod
+    def send_prompt(
+        model: llm.models.Model,
+        prompt: str,
+        system: str | None = None,
+        attachments: Sequence[Any] | None = None,
+    ) -> Any:
+        """Send a prompt to a model after logging it to the console."""
+        AI._log_prompt(
+            kind="model",
+            prompt=prompt,
+            system=system,
+            attachments=attachments,
+            model_key=getattr(model, "model_id", None),
+        )
+        prompt_kwargs: dict[str, Any] = {}
+        if system is not None:
+            prompt_kwargs["system"] = system
+        if attachments:
+            prompt_kwargs["attachments"] = list(attachments)
+        return model.prompt(prompt, **prompt_kwargs)
+
+    @staticmethod
+    def send_conversation_prompt(
+        conversation: llm.models.Conversation,
+        prompt: str,
+        attachments: Sequence[Any] | None = None,
+    ) -> Any:
+        """Send a prompt to a conversation after logging it to the console."""
+        AI._log_prompt(
+            kind="conversation",
+            prompt=prompt,
+            system=getattr(conversation, "system", None),
+            attachments=attachments,
+            model_key=getattr(getattr(conversation, "model", None), "model_id", None),
+        )
+        prompt_kwargs: dict[str, Any] = {}
+        if attachments:
+            prompt_kwargs["attachments"] = list(attachments)
+        return conversation.prompt(prompt, **prompt_kwargs)
+
+    @staticmethod
+    def extract_response_text(response: Any) -> str:
+        """Extract text from llm responses that expose text as attr or method."""
+        return response.text() if callable(response.text) else response.text
 
     @staticmethod
     def _detect_mime_type(path: Path) -> str:
@@ -164,6 +217,93 @@ class AI:
         return extension_map.get(path.suffix.lower(), "application/octet-stream")
 
     @staticmethod
+    def _log_prompt(
+        kind: str,
+        prompt: str,
+        system: str | None = None,
+        attachments: Sequence[Any] | None = None,
+        model_key: str | None = None,
+    ) -> None:
+        """Log the outbound prompt payload to stderr."""
+        payload: dict[str, Any] = {"kind": kind, "text": prompt}
+        if model_key:
+            payload["model"] = model_key
+        if system is not None:
+            payload["system"] = system
+        if attachments:
+            payload["attachments"] = [AI._summarize_prompt_input(item) for item in attachments]
+        print(
+            f"{AI._LOG_PREFIX}{json.dumps(payload, sort_keys=True)}",
+            file=sys.stderr,
+            flush=True,
+        )
+
+    @staticmethod
+    def _summarize_prompt_input(item: Any) -> dict[str, Any]:
+        """Summarize attachments or binary prompt payloads for console logging."""
+        if isinstance(item, bytes | bytearray | memoryview):
+            return AI._summarize_binary_payload(bytes(item))
+
+        if isinstance(item, str | Path):
+            return AI._summarize_file_reference(Path(item))
+
+        path = getattr(item, "path", None)
+        if path:
+            return AI._summarize_file_reference(Path(path), mime_type=getattr(item, "type", None))
+
+        url = getattr(item, "url", None)
+        content = getattr(item, "content", None)
+        mime_type = getattr(item, "type", None)
+
+        if url:
+            summary: dict[str, Any] = {"kind": "attachment", "url": url}
+            if mime_type:
+                summary["mime_type"] = mime_type
+            if content is not None:
+                summary.update(AI._summarize_binary_payload(content))
+            return summary
+
+        if content is not None:
+            summary = {"kind": "attachment"}
+            if mime_type:
+                summary["mime_type"] = mime_type
+            summary.update(AI._summarize_binary_payload(content))
+            return summary
+
+        return {
+            "kind": "attachment",
+            "type_name": type(item).__name__,
+        }
+
+    @staticmethod
+    def _summarize_file_reference(
+        path: Path,
+        mime_type: str | None = None,
+    ) -> dict[str, Any]:
+        """Summarize a file attachment without dumping its content."""
+        summary: dict[str, Any] = {
+            "kind": "attachment",
+            "name": path.name,
+        }
+        if mime_type is None:
+            mime_type = AI._detect_mime_type(path)
+        summary["mime_type"] = mime_type
+        try:
+            summary["size_bytes"] = path.stat().st_size
+        except OSError:
+            summary["missing"] = True
+        return summary
+
+    @staticmethod
+    def _summarize_binary_payload(data: bytes) -> dict[str, Any]:
+        """Summarize binary data without writing raw content to the console."""
+        return {
+            "kind": "binary",
+            "size_bytes": len(data),
+            "sha256": hashlib.sha256(data).hexdigest()[:12],
+        }
+
+    @staticmethod
     def prompt_with_attachment(
         model: llm.models.Model,
         prompt: str,
@@ -186,5 +326,5 @@ class AI:
             FileNotFoundError: If the file does not exist
         """
         attachment = AI.create_attachment(file_path, mime_type)
-        response = model.prompt(prompt, attachments=[attachment])
-        return response.text() if callable(response.text) else response.text
+        response = AI.send_prompt(model, prompt, attachments=[attachment])
+        return AI.extract_response_text(response)
