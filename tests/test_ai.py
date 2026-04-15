@@ -28,7 +28,7 @@ class TestAI:
         assert isinstance(models, list)
 
     def test_get_models_returns_dicts_with_required_keys(self, mock_models):
-        """Test that get_models returns dicts with 'key' and 'name' keys."""
+        """Test that get_models returns dicts with the expected fields."""
         models = AI.get_models()
         assert len(models) == 3
 
@@ -36,17 +36,19 @@ class TestAI:
             assert isinstance(model, dict)
             assert "key" in model
             assert "name" in model
+            assert "provider" in model
             assert isinstance(model["key"], str)
             assert isinstance(model["name"], str)
+            assert isinstance(model["provider"], str)
 
     def test_get_models_content(self, mock_models):
         """Test that get_models returns expected model data."""
         models = AI.get_models()
 
         expected = [
-            {"key": "gpt-4o", "name": "TestModel: GPT-4 Omni"},
-            {"key": "claude-3-opus", "name": "TestModel: Claude 3 Opus"},
-            {"key": "llama2", "name": "TestModel: Llama 2"},
+            {"key": "gpt-4o", "name": "TestModel: GPT-4 Omni", "provider": "conftest"},
+            {"key": "claude-3-opus", "name": "TestModel: Claude 3 Opus", "provider": "conftest"},
+            {"key": "llama2", "name": "TestModel: Llama 2", "provider": "conftest"},
         ]
         assert models == expected
 

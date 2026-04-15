@@ -122,10 +122,10 @@ source .venv/bin/activate
 
 ```bash
 # Run all tests
-uv run pytest
+make test
 
 # With coverage
-uv run pytest --cov=privacyforms_ai --cov-report=term
+make test-cov
 
 # Verbose output
 uv run pytest -v
@@ -135,25 +135,62 @@ uv run pytest -v
 
 ```bash
 # Format code
-uv run ruff format .
+make format
 
 # Check formatting
-uv run ruff format --check .
+make format-check
 
 # Lint
-uv run ruff check .
+make lint
 
 # Auto-fix linting issues
-uv run ruff check --fix .
+make fix
 
 # Type check
-uv run ty check --python-version 3.12 src/
+make type-check
+
+# Run the full local gate
+make check
 ```
 
 ### Build Package
 
 ```bash
-uv run python -m build
+# Build release artifacts into dist/
+make dist
+```
+
+### Upload Package
+
+```bash
+# Upload to PyPI using twine and your ~/.pypirc or TWINE_* credentials
+make upload
+
+# Upload to another configured repository, e.g. TestPyPI
+make upload TWINE_REPOSITORY=testpypi
+```
+
+### Create a Release
+
+```bash
+# 1. Update the version in pyproject.toml, setup.py, cli.py, and tests
+
+# 2. Refresh the lockfile if needed
+uv sync --all-extras --dev
+
+# 3. Verify and build
+make check
+make dist
+
+# 4. Upload
+make upload
+
+# 5. Commit and tag
+git add pyproject.toml setup.py src/privacyforms_ai/cli.py tests/ uv.lock
+git commit -m "Release X.Y.Z"
+git tag vX.Y.Z
+git push origin HEAD
+git push origin vX.Y.Z
 ```
 
 ## API Design

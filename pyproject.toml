@@ -19,6 +19,7 @@ dev = [
     "ruff>=0.9.0",
     "ty>=0.0.20",
     "build>=1.0",
+    "wheel>=0.45",
 ]
 
 [project.scripts]
@@ -63,4 +64,3 @@ convention = "google"
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
-

@@ -16,7 +16,7 @@ PrivacyForms AI is a Python CLI tool for interacting with LLM models via the `ll
 | Linting/Formatting | `ruff` |
 | Type Checking | `ty` (Google's fast type checker) |
 | Testing | `pytest` with `pytest-cov` |
-| Build | `hatchling` |
+| Build | `setuptools` + `build` |
 
 ## Development Workflow
 
@@ -33,34 +33,48 @@ source .venv/bin/activate
 ### Common Commands
 
 ```bash
+# Install dependencies
+make sync
+
 # Run tests
-uv run pytest tests/ -v
+make test
 
 # Run tests with coverage
-uv run pytest tests/ -v --cov=privacyforms_ai --cov-report=term
+make test-cov
 
 # Format code
-uv run ruff format .
+make format
 
 # Check formatting (CI)
-uv run ruff format --check .
+make format-check
 
 # Lint code
-uv run ruff check .
+make lint
 
 # Auto-fix linting issues
-uv run ruff check --fix .
+make fix
 
 # Type check
-uv run ty check --python-version 3.12 src/
+make type-check
 
-# Build package
-uv run python -m build
+# Run the full local quality gate
+make check
+
+# Build release artifacts into dist/
+make dist
+
+# Upload release artifacts via twine
+make upload
+
+# Upload to another configured repository
+make upload TWINE_REPOSITORY=testpypi
 
 # Run CLI locally
 uv run privacyforms-ai --help
 uv run python -m privacyforms_ai.cli --help
 ```
+
+`make` targets use a project-local `.uv-cache/` so they remain usable in sandboxed environments where the default uv cache directory is not writable.
 
 ## Code Style
 
@@ -203,6 +217,48 @@ Jobs:
 2. **lint** - ruff format, ruff check, ty check
 3. **build** - Build package artifacts
 
+## Release Workflow
+
+### Make Targets
+
+- `make dist` builds source and wheel artifacts into `dist/`
+- `make upload` rebuilds artifacts and uploads `dist/*` with `twine`
+- `TWINE_REPOSITORY` defaults to `pypi` and can be overridden, for example `testpypi`
+- `TWINE_UPLOAD_ARGS` passes additional flags through to `twine upload`, for example `--skip-existing`
+
+### Twine Credentials
+
+`make upload` uses `uvx twine upload`. Credentials should come from one of:
+
+- `~/.pypirc`
+- `TWINE_USERNAME` and `TWINE_PASSWORD`
+- `TWINE_USERNAME=__token__` and `TWINE_PASSWORD=<pypi-token>`
+
+### Creating a New Release
+
+1. Update the version consistently in:
+   - `pyproject.toml`
+   - `setup.py`
+   - `src/privacyforms_ai/cli.py`
+   - any version assertions in tests
+2. Refresh the lockfile if the project version changed:
+   - `uv sync --all-extras --dev`
+3. Verify the release candidate:
+   - `make check`
+4. Build release artifacts:
+   - `make dist`
+5. Upload artifacts:
+   - `make upload`
+   - For TestPyPI: `make upload TWINE_REPOSITORY=testpypi`
+6. Finalize the git release:
+   - `git add pyproject.toml setup.py src/privacyforms_ai/cli.py tests/ uv.lock`
+   - `git commit -m "Release X.Y.Z"`
+   - `git tag vX.Y.Z`
+   - `git push origin HEAD`
+   - `git push origin vX.Y.Z`
+
+Agents should prefer these `make` targets over ad hoc `uv`, `build`, or `twine` commands so the release flow stays consistent.
+
 ## Adding Dependencies
 
 Edit `pyproject.toml`:
@@ -237,4 +293,5 @@ uv sync --all-extras --dev
 - Use `uv` for all Python operations, not `pip` directly
 - Keep `uv.lock` committed for reproducible builds
 - Run all checks locally before pushing: format, lint, type-check, test
+- Use `make dist` to build release artifacts and `make upload` to publish them via twine
 - The CLI entry point is `privacyforms-ai` (defined in `pyproject.toml`)
