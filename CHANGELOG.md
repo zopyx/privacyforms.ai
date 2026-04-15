@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.3] - 2026-04-15
+## [0.1.4] - 2026-04-15
 
 ### Added
 - Added `LICENSE` file (MIT).
@@ -39,3 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `Makefile` vs CI build divergence.
 - Aligned README with actual CI matrix (Ubuntu only).
 - Scoped `S101` (assert) ignore to `tests/**` only instead of globally.
+
+## [0.1.3] - 2026-04-15
+
+Release 0.1.3 (uploaded to PyPI).
