@@ -23,6 +23,7 @@ class AI:
             A list of dictionaries, each containing:
                 - "key": The model identifier (e.g., "gpt-4o", "anthropic/claude-3-opus-latest")
                 - "name": The human-readable model name (e.g., "OpenAI Chat: gpt-4o")
+                - "provider": The provider name (e.g., "openai", "anthropic")
         """
         models = llm.get_models()
         result = []
@@ -33,9 +34,21 @@ class AI:
                 {
                     "key": model.model_id,
                     "name": name,
+                    "provider": AI._get_provider(model),
                 }
             )
         return result
+
+    @staticmethod
+    def _get_provider(model) -> str:
+        """Derive a provider name from an llm model instance."""
+        module = getattr(model.__class__, "__module__", "")
+        if module == "llm.default_plugins.openai_models":
+            return "openai"
+        if module.startswith("llm_"):
+            return module.split("_", 1)[1]
+        provider = module.split(".")[-1].replace("_models", "")
+        return provider or "unknown"
 
     @staticmethod
     def get_model(key: str) -> llm.models.Model:
