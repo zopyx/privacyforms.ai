@@ -8,7 +8,7 @@ from .ai import AI
 
 
 @click.group()
-@click.version_option(version="0.1.1", prog_name="privacyforms-ai")
+@click.version_option(version="0.1.2", prog_name="privacyforms-ai")
 def cli() -> None:
     """PrivacyForms AI - LLM integration CLI."""
     pass

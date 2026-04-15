@@ -1,6 +1,6 @@
 [project]
 name = "privacyforms.ai"
-version = "0.1.1"
+version = "0.1.2"
 description = "PrivacyForms AI - LLM integration module"
 readme = "README.md"
 requires-python = ">=3.12"
