@@ -504,7 +504,6 @@ wheels = [
 
 [[package]]
 name = "privacyforms-ai"
-version = "0.1.2"
 source = { editable = "." }
 dependencies = [
     { name = "click" },

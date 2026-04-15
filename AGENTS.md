@@ -149,6 +149,7 @@ def greet(name: str) -> None:
 ```
 src/privacyforms_ai/
 ├── __init__.py      # Package exports
+├── _version.py      # Package version
 ├── ai.py            # AI class for LLM interactions
 └── cli.py           # Click CLI commands
 
@@ -210,7 +211,7 @@ def test_prompt(self, runner, monkeypatch):
 
 GitHub Actions runs on:
 - Python: 3.12, 3.13, 3.14, 3.14t (free-threaded)
-- OS: Ubuntu, macOS
+- OS: Ubuntu
 
 Jobs:
 1. **test** - Run pytest with coverage
@@ -238,8 +239,8 @@ Jobs:
 
 1. Update the version consistently in:
    - `pyproject.toml`
-   - `setup.py`
-   - `src/privacyforms_ai/cli.py`
+   - `src/privacyforms_ai/_version.py`
+   - `README.md` and `AGENTS.md` examples
    - any version assertions in tests
 2. Refresh the lockfile if the project version changed:
    - `uv sync --all-extras --dev`
@@ -251,7 +252,7 @@ Jobs:
    - `make upload`
    - For TestPyPI: `make upload TWINE_REPOSITORY=testpypi`
 6. Finalize the git release:
-   - `git add pyproject.toml setup.py src/privacyforms_ai/cli.py tests/ uv.lock`
+   - `git add pyproject.toml src/privacyforms_ai/_version.py src/privacyforms_ai/__init__.py tests/ uv.lock CHANGELOG.md .gitattributes LICENSE`
    - `git commit -m "Release X.Y.Z"`
    - `git tag vX.Y.Z`
    - `git push origin HEAD`

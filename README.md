@@ -4,11 +4,12 @@ A Python CLI tool for interacting with Large Language Models (LLMs) via Simon Wi
 
 ## Features
 
-- 🔧 **Simple CLI** - Easy-to-use command-line interface
+- 🔧 **Simple CLI** - Easy-to-use command-line interface with colored output
 - 💬 **Interactive Chat** - Multi-turn conversations with context/memory
 - 🚀 **Multiple Providers** - Works with OpenAI, Anthropic, Moonshot, Ollama, and more
 - 🧪 **Well Tested** - Comprehensive test coverage
 - ⚡ **Fast** - Built with modern Python tooling
+- 🔍 **Observable** - Optional verbose logging (`-v` / `-vv`) to inspect prompt payloads
 
 ## Installation
 
@@ -51,13 +52,29 @@ For Ollama, make sure the Ollama server is running locally.
 
 ## Usage
 
+### Global Options
+
+```bash
+# Show version
+privacyforms-ai --version
+
+# Show help
+privacyforms-ai --help
+
+# Enable verbose output (shows prompt logs on stderr)
+privacyforms-ai -v models
+
+# Enable debug output
+privacyforms-ai -vv prompt gpt-4o-mini "Hello!"
+```
+
 ### List Available Models
 
 ```bash
 privacyforms-ai models
 
 # JSON output
-privacyforms-ai models --json
+privacyforms-ai models --json-output
 ```
 
 ### Send a Single Prompt
@@ -173,7 +190,7 @@ make upload TWINE_REPOSITORY=testpypi
 ### Create a Release
 
 ```bash
-# 1. Update the version in pyproject.toml, setup.py, cli.py, and tests
+# 1. Update the version in pyproject.toml, src/privacyforms_ai/_version.py, README, and tests
 
 # 2. Refresh the lockfile if needed
 uv sync --all-extras --dev
@@ -186,7 +203,7 @@ make dist
 make upload
 
 # 5. Commit and tag
-git add pyproject.toml setup.py src/privacyforms_ai/cli.py tests/ uv.lock
+git add pyproject.toml src/privacyforms_ai/_version.py src/privacyforms_ai/__init__.py tests/ uv.lock CHANGELOG.md .gitattributes LICENSE
 git commit -m "Release X.Y.Z"
 git tag vX.Y.Z
 git push origin HEAD
@@ -203,6 +220,7 @@ See [API_DESIGN.md](API_DESIGN.md) for the REST API and WebSocket design specifi
 privacyforms.ai/
 ├── src/privacyforms_ai/
 │   ├── __init__.py
+│   ├── _version.py        # Package version
 │   ├── ai.py              # AI class for LLM interactions
 │   └── cli.py             # Click CLI commands
 ├── tests/
@@ -211,6 +229,9 @@ privacyforms.ai/
 │   └── test_cli.py        # CLI tests
 ├── pyproject.toml         # Project configuration
 ├── uv.lock               # Locked dependencies
+├── CHANGELOG.md          # Release notes
+├── LICENSE               # MIT license
+├── .gitattributes        # Line-ending configuration
 └── README.md
 ```
 
@@ -223,10 +244,11 @@ GitHub Actions workflow runs on:
 Jobs:
 - **test** - Run pytest with coverage
 - **lint** - ruff (formatting, linting) and ty (type checking)
+- **build** - Build package artifacts and validate with twine
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
@@ -234,7 +256,7 @@ Contributions are welcome! Please:
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes with tests
-4. Ensure all checks pass (`uv run ruff format --check . && uv run ruff check . && uv run ty check src/ && uv run pytest`)
+4. Ensure all checks pass (`make check`)
 5. Submit a pull request
 
 ## Acknowledgments

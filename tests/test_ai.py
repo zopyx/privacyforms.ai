@@ -2,21 +2,19 @@
 
 import hashlib
 import json
+import logging
+from pathlib import Path
 
 import pytest
 
 from privacyforms_ai.ai import AI
 
 
-def parse_prompt_log(console_output: str) -> dict[str, object]:
-    """Parse the most recent prompt log line from stderr output."""
-    prompt_logs = [
-        line[len(AI._LOG_PREFIX) :]
-        for line in console_output.splitlines()
-        if line.startswith(AI._LOG_PREFIX)
-    ]
-    assert prompt_logs, "Expected at least one prompt log line"
-    return json.loads(prompt_logs[-1])
+def parse_prompt_log(caplog) -> dict[str, object]:
+    """Parse the most recent prompt log line from captured log records."""
+    records = [r for r in caplog.records if r.message.startswith(AI._LOG_PREFIX)]
+    assert records, "Expected at least one prompt log line"
+    return json.loads(records[-1].message[len(AI._LOG_PREFIX) :])
 
 
 class TestAI:
@@ -149,8 +147,9 @@ class TestGetConversation:
 class TestPromptLogging:
     """Test cases for prompt logging helpers."""
 
-    def test_send_prompt_logs_text_and_system(self, capsys):
+    def test_send_prompt_logs_text_and_system(self, caplog):
         """Test that model prompts are always logged."""
+        caplog.set_level(logging.INFO)
         prompt_calls = []
 
         class MockResponse:
@@ -167,7 +166,7 @@ class TestPromptLogging:
         assert response.text == "Hello back!"
         assert prompt_calls == [("Hello", "Be helpful")]
 
-        payload = parse_prompt_log(capsys.readouterr().err)
+        payload = parse_prompt_log(caplog)
         assert payload == {
             "kind": "model",
             "model": "gpt-4o",
@@ -175,8 +174,9 @@ class TestPromptLogging:
             "text": "Hello",
         }
 
-    def test_send_prompt_logs_binary_payload_in_short_form(self, capsys):
+    def test_send_prompt_logs_binary_payload_in_short_form(self, caplog):
         """Test that binary payloads are summarized instead of printed raw."""
+        caplog.set_level(logging.INFO)
         payload_bytes = b"\x00\x01\x02"
         prompt_calls = []
 
@@ -193,7 +193,7 @@ class TestPromptLogging:
         AI.send_prompt(MockModel(), "Inspect this", attachments=[payload_bytes])
         assert prompt_calls == [("Inspect this", [payload_bytes])]
 
-        payload = parse_prompt_log(capsys.readouterr().err)
+        payload = parse_prompt_log(caplog)
         assert payload == {
             "attachments": [
                 {
@@ -207,8 +207,9 @@ class TestPromptLogging:
             "text": "Inspect this",
         }
 
-    def test_prompt_with_attachment_logs_short_attachment_summary(self, capsys, tmp_path):
+    def test_prompt_with_attachment_logs_short_attachment_summary(self, caplog, tmp_path):
         """Test that file attachments are logged with concise metadata only."""
+        caplog.set_level(logging.INFO)
         file_path = tmp_path / "sample.pdf"
         file_path.write_bytes(b"%PDF-1.7")
         prompt_calls = []
@@ -229,7 +230,7 @@ class TestPromptLogging:
         assert prompt_calls[0][0] == "Review this file"
         assert len(prompt_calls[0][1]) == 1
 
-        payload = parse_prompt_log(capsys.readouterr().err)
+        payload = parse_prompt_log(caplog)
         assert payload == {
             "attachments": [
                 {
@@ -243,3 +244,18 @@ class TestPromptLogging:
             "model": "gpt-4o",
             "text": "Review this file",
         }
+
+
+class TestMimeTypeDetection:
+    """Test cases for MIME type detection."""
+
+    def test_detect_mime_type_known_extension(self):
+        """Test that known extensions map to the correct MIME type."""
+        assert AI._detect_mime_type(Path("document.pdf")) == "application/pdf"
+        assert AI._detect_mime_type(Path("image.PNG")) == "image/png"
+        assert AI._detect_mime_type(Path("data.json")) == "application/json"
+
+    def test_detect_mime_type_unknown_extension(self):
+        """Test that unknown extensions fall back to octet-stream."""
+        assert AI._detect_mime_type(Path("archive.unknown")) == "application/octet-stream"
+        assert AI._detect_mime_type(Path("no_extension")) == "application/octet-stream"

@@ -2,12 +2,14 @@
 
 import hashlib
 import json
-import sys
+import logging
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, cast
 
 import llm
+
+logger = logging.getLogger(__name__)
 
 
 class AI:
@@ -133,24 +135,6 @@ class AI:
             except TypeError:
                 continue
 
-        # Last resort: use inspect to match signature
-        import inspect
-
-        sig = inspect.signature(attachment_cls)
-        kwargs = {}
-        for name in sig.parameters:
-            if name in ("data", "content", "body", "bytes"):
-                kwargs[name] = data
-            elif name in ("filename", "name", "file_name"):
-                kwargs[name] = filename
-            elif name in ("path", "file", "file_path"):
-                kwargs[name] = str(path)
-            elif name in ("mime_type", "mimetype", "content_type", "type"):
-                kwargs[name] = mime_type
-
-        if kwargs:
-            return attachment_cls(**kwargs)
-
         raise ValueError("Could not create attachment with available constructors")
 
     @staticmethod
@@ -245,11 +229,7 @@ class AI:
             payload["system"] = system
         if attachments:
             payload["attachments"] = [AI._summarize_prompt_input(item) for item in attachments]
-        print(
-            f"{AI._LOG_PREFIX}{json.dumps(payload, sort_keys=True)}",
-            file=sys.stderr,
-            flush=True,
-        )
+        logger.info("%s%s", AI._LOG_PREFIX, json.dumps(payload, sort_keys=True))
 
     @staticmethod
     def _summarize_prompt_input(item: Any) -> dict[str, Any]:

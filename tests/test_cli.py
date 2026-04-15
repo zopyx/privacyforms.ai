@@ -1,26 +1,28 @@
 """Tests for the CLI."""
 
 import json
+import logging
+from typing import Any
 
 import pytest
 from click.testing import CliRunner
 
+from privacyforms_ai import __version__
+from privacyforms_ai.ai import AI
 from privacyforms_ai.cli import cli
 
-PROMPT_LOG_PREFIX = "[privacyforms-ai] prompt "
 
-
-def parse_prompt_logs(output: str) -> list[dict[str, object]]:
-    """Parse prompt logs from the combined CLI output stream."""
+def parse_prompt_logs(caplog) -> list[dict[str, Any]]:
+    """Parse prompt logs from captured log records."""
     return [
-        json.loads(line[len(PROMPT_LOG_PREFIX) :])
-        for line in output.splitlines()
-        if line.startswith(PROMPT_LOG_PREFIX)
+        json.loads(record.message[len(AI._LOG_PREFIX) :])
+        for record in caplog.records
+        if record.message.startswith(AI._LOG_PREFIX)
     ]
 
 
 @pytest.fixture
-def runner():
+def runner() -> CliRunner:
     """Fixture for the Click CLI runner."""
     return CliRunner()
 
@@ -58,51 +60,40 @@ class TestModelsCommand:
 class TestPromptCommand:
     """Test cases for the prompt command."""
 
-    def test_prompt_success(self, runner, monkeypatch):
+    def test_prompt_success(self, runner, monkeypatch, mock_response, mock_model):
         """Test successful prompt execution."""
-
-        class MockResponse:
-            def text(self):
-                return "Hello, world!"
-
-        class MockModel:
-            def prompt(self, prompt, system=None):
-                return MockResponse()
-
-        def mock_get_model(key):
-            if key == "gpt-4o":
-                return MockModel()
-            raise Exception("Model not found")
-
-        monkeypatch.setattr("llm.get_model", mock_get_model)
+        monkeypatch.setattr(
+            "llm.get_model",
+            lambda key: (
+                mock_model("Hello, world!") if key == "gpt-4o" else Exception("Model not found")
+            ),
+        )
 
         result = runner.invoke(cli, ["prompt", "gpt-4o", "Hello!"])
         assert result.exit_code == 0
         assert "Hello, world!" in result.output
 
-    def test_prompt_with_system(self, runner, monkeypatch):
+    def test_prompt_with_system(self, runner, monkeypatch, mock_response, mock_model, caplog):
         """Test prompt with system message."""
+        caplog.set_level(logging.INFO)
         system_received = []
 
-        class MockResponse:
-            def text(self):
-                return "Response with system"
-
-        class MockModel:
-            def prompt(self, prompt, system=None):
+        class TrackingModel(mock_model):
+            def prompt(self, prompt, system=None, attachments=None):
                 system_received.append(system)
-                return MockResponse()
+                return mock_response("Response with system")
 
-        monkeypatch.setattr("llm.get_model", lambda key: MockModel())
+        monkeypatch.setattr("llm.get_model", lambda key: TrackingModel())
 
         result = runner.invoke(cli, ["prompt", "gpt-4o", "Hello!", "--system", "Be helpful"])
         assert result.exit_code == 0
         assert system_received == ["Be helpful"]
 
-        prompt_logs = parse_prompt_logs(result.output)
+        prompt_logs = parse_prompt_logs(caplog)
         assert prompt_logs == [
             {
                 "kind": "model",
+                "model": "gpt-4o",
                 "text": "Hello!",
                 "system": "Be helpful",
             }
@@ -110,9 +101,10 @@ class TestPromptCommand:
 
     def test_prompt_model_error(self, runner, monkeypatch):
         """Test prompt with invalid model."""
+        import llm
 
         def mock_get_model(key):
-            raise Exception("Model not found: test-model")
+            raise llm.errors.ModelError("Model not found: test-model")
 
         monkeypatch.setattr("llm.get_model", mock_get_model)
 
@@ -129,7 +121,7 @@ class TestCLI:
         result = runner.invoke(cli, ["--version"])
         assert result.exit_code == 0
         assert "privacyforms-ai" in result.output
-        assert "0.1.2" in result.output
+        assert __version__ in result.output
 
     def test_help(self, runner):
         """Test --help flag."""
@@ -141,32 +133,18 @@ class TestCLI:
 class TestChatCommand:
     """Test cases for the chat command."""
 
-    def test_chat_basic_conversation(self, runner, monkeypatch):
+    def test_chat_basic_conversation(self, runner, monkeypatch, mock_conversation):
         """Test basic chat session with a few exchanges."""
 
-        class MockResponse:
-            def __init__(self, text):
-                self._text = text
-
-            def text(self):
-                return self._text
-
-        class MockConversation:
-            def __init__(self, system=None):
-                self.system = system
-                self.responses = ["Hello!", "I can help with that.", "Goodbye!"]
-                self.index = 0
-
-            def prompt(self, prompt):
-                response = self.responses[self.index % len(self.responses)]
-                self.index += 1
-                return MockResponse(response)
+        class MultiTurnConversation(mock_conversation):
+            def __init__(self):
+                super().__init__(responses=["Hello!", "I can help with that.", "Goodbye!"])
 
         class MockModel:
             model_id = "gpt-4o"
 
             def conversation(self, system=None):
-                return MockConversation(system=system)
+                return MultiTurnConversation()
 
         monkeypatch.setattr("llm.get_model", lambda key: MockModel())
 
@@ -178,17 +156,18 @@ class TestChatCommand:
         assert "I can help with that." in result.output
         assert "Goodbye!" in result.output
 
-    def test_chat_with_system_prompt(self, runner, monkeypatch):
+    def test_chat_with_system_prompt(
+        self, runner, monkeypatch, mock_response, mock_conversation, caplog
+    ):
         """Test chat with a system prompt."""
+        caplog.set_level(logging.INFO)
         system_set = []
 
-        class MockResponse:
-            def text(self):
-                return "Understood!"
-
-        class MockConversation:
+        class SystemConversation(mock_conversation):
             def __init__(self):
                 self._system = None
+                self.responses = ["Understood!"]
+                self.index = 0
 
             @property
             def system(self):
@@ -199,12 +178,14 @@ class TestChatCommand:
                 self._system = value
                 system_set.append(value)
 
-            def prompt(self, prompt):
-                return MockResponse()
+            def prompt(self, prompt, attachments=None):
+                response = self.responses[self.index % len(self.responses)]
+                self.index += 1
+                return mock_response(response)
 
         class MockModel:
             def conversation(self):
-                return MockConversation()
+                return SystemConversation()
 
         monkeypatch.setattr("llm.get_model", lambda key: MockModel())
 
@@ -215,7 +196,7 @@ class TestChatCommand:
         assert "System prompt: Be helpful" in result.output
         assert system_set == ["Be helpful"]
 
-        prompt_logs = parse_prompt_logs(result.output)
+        prompt_logs = parse_prompt_logs(caplog)
         assert prompt_logs == [
             {
                 "kind": "conversation",
@@ -224,25 +205,18 @@ class TestChatCommand:
             }
         ]
 
-    def test_chat_clear_command(self, runner, monkeypatch):
+    def test_chat_clear_command(self, runner, monkeypatch, mock_conversation):
         """Test the /clear command."""
         conversation_count = [0]
 
-        class MockResponse:
-            def text(self):
-                return "Response"
-
-        class MockConversation:
+        class CountingConversation(mock_conversation):
             def __init__(self):
-                self.system = None
+                super().__init__()
                 conversation_count[0] += 1
-
-            def prompt(self, prompt):
-                return MockResponse()
 
         class MockModel:
             def conversation(self):
-                return MockConversation()
+                return CountingConversation()
 
         monkeypatch.setattr("llm.get_model", lambda key: MockModel())
 
@@ -251,20 +225,12 @@ class TestChatCommand:
         assert "Conversation history cleared." in result.output
         assert conversation_count[0] == 2  # Initial + after clear
 
-    def test_chat_model_command(self, runner, monkeypatch):
+    def test_chat_model_command(self, runner, monkeypatch, mock_conversation):
         """Test the /model command."""
-
-        class MockResponse:
-            def text(self):
-                return "Response"
-
-        class MockConversation:
-            def prompt(self, prompt):
-                return MockResponse()
 
         class MockModel:
             def conversation(self, system=None):
-                return MockConversation()
+                return mock_conversation()
 
         monkeypatch.setattr("llm.get_model", lambda key: MockModel())
 
@@ -272,15 +238,12 @@ class TestChatCommand:
         assert result.exit_code == 0
         assert "Current model: gpt-4o" in result.output
 
-    def test_chat_quit_variants(self, runner, monkeypatch):
+    def test_chat_quit_variants(self, runner, monkeypatch, mock_conversation):
         """Test various quit commands."""
-
-        class MockConversation:
-            pass
 
         class MockModel:
             def conversation(self, system=None):
-                return MockConversation()
+                return mock_conversation()
 
         monkeypatch.setattr("llm.get_model", lambda key: MockModel())
 
@@ -291,9 +254,10 @@ class TestChatCommand:
 
     def test_chat_model_error(self, runner, monkeypatch):
         """Test chat with invalid model."""
+        import llm
 
         def mock_get_model(key):
-            raise Exception("Model not found: invalid-model")
+            raise llm.errors.ModelError("Model not found: invalid-model")
 
         monkeypatch.setattr("llm.get_model", mock_get_model)
 
@@ -301,22 +265,18 @@ class TestChatCommand:
         assert result.exit_code != 0
         assert "Error" in result.output or "Model not found" in result.output
 
-    def test_chat_empty_input(self, runner, monkeypatch):
+    def test_chat_empty_input(self, runner, monkeypatch, mock_conversation):
         """Test that empty input is ignored."""
         prompt_count = [0]
 
-        class MockResponse:
-            def text(self):
-                return "Response"
-
-        class MockConversation:
-            def prompt(self, prompt):
+        class CountingConversation(mock_conversation):
+            def prompt(self, prompt, attachments=None):
                 prompt_count[0] += 1
-                return MockResponse()
+                return super().prompt(prompt, attachments)
 
         class MockModel:
             def conversation(self, system=None):
-                return MockConversation()
+                return CountingConversation()
 
         monkeypatch.setattr("llm.get_model", lambda key: MockModel())
 

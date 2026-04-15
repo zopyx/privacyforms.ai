@@ -43,10 +43,10 @@ fix: ## Auto-fix linting issues
 type-check: ## Run type checker
 	UV_CACHE_DIR=$(UV_CACHE_DIR) uv run ty check --python-version 3.12 $(SRC_DIR)/
 
-check: format lint test ## Run all checks (format, lint, type-check, test)
+check: lint test ## Run all checks (format, lint, type-check, test)
 
 build: sync ## Build package
-	UV_CACHE_DIR=$(UV_CACHE_DIR) uv run python -m build --no-isolation
+	UV_CACHE_DIR=$(UV_CACHE_DIR) uv run python -m build
 
 dist: clean build ## Build release artifacts into dist/
 

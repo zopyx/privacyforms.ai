@@ -1,17 +1,33 @@
 """Command-line interface for PrivacyForms AI."""
 
 import json
+import logging
+import sys
 
 import click
+import llm
 
-from .ai import AI
+from privacyforms_ai import AI, __version__
+
+logger = logging.getLogger(__name__)
 
 
 @click.group()
-@click.version_option(version="0.1.2", prog_name="privacyforms-ai")
-def cli() -> None:
+@click.version_option(version=__version__, prog_name="privacyforms-ai")
+@click.option("-v", "--verbose", count=True, help="Increase verbosity (-v for INFO, -vv for DEBUG)")
+@click.pass_context
+def cli(ctx: click.Context, verbose: int) -> None:
     """PrivacyForms AI - LLM integration CLI."""
-    pass
+    level = logging.WARNING
+    if verbose >= 2:
+        level = logging.DEBUG
+    elif verbose >= 1:
+        level = logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(message)s",
+        stream=sys.stderr,
+    )
 
 
 @cli.command()
@@ -46,7 +62,10 @@ def prompt(model_key: str, prompt: str, system: str | None) -> None:
         model = AI.get_model(model_key)
         response = AI.send_prompt(model, prompt, system=system)
         click.echo(AI.extract_response_text(response))
+    except llm.errors.ModelError as e:
+        raise click.ClickException(str(e)) from e
     except Exception as e:
+        logger.exception("Unexpected error during prompt")
         raise click.ClickException(str(e)) from e
 
 
@@ -67,25 +86,26 @@ def chat(model_key: str, system: str | None) -> None:
     """
     try:
         conversation = AI.get_conversation(model_key, system=system)
+    except llm.errors.ModelError as e:
+        raise click.ClickException(str(e)) from e
     except Exception as e:
+        logger.exception("Unexpected error starting chat")
         raise click.ClickException(str(e)) from e
 
-    click.echo(click.style(f"Starting chat with model: {model_key}", fg="green", bold=True))
+    click.secho(f"Starting chat with model: {model_key}", fg="green", bold=True)
     if system:
-        click.echo(click.style(f"System prompt: {system}", fg="cyan"))
-    click.echo(
-        click.style(
-            "Type /quit, /exit, or /q to end the session. Type /clear to reset history.",
-            fg="bright_black",
-        )
+        click.secho(f"System prompt: {system}", fg="cyan")
+    click.secho(
+        "Type /quit, /exit, or /q to end the session. Type /clear to reset history.",
+        fg="bright_black",
     )
     click.echo("-" * 50)
 
     while True:
         try:
-            user_input = click.prompt("\nYou", type=str)
+            user_input = click.prompt("\nYou", type=str, default="")
         except click.Abort:
-            click.echo()
+            click.secho("\nGoodbye!", fg="green")
             break
 
         user_input = user_input.strip()
@@ -95,16 +115,23 @@ def chat(model_key: str, system: str | None) -> None:
 
         # Handle special commands
         if user_input in ("/quit", "/exit", "/q"):
-            click.echo(click.style("\nGoodbye!", fg="green"))
+            click.secho("\nGoodbye!", fg="green")
             break
 
         if user_input == "/clear":
-            conversation = AI.get_conversation(model_key, system=system)
-            click.echo(click.style("Conversation history cleared.", fg="yellow"))
+            try:
+                conversation = AI.get_conversation(model_key, system=system)
+            except llm.errors.ModelError as e:
+                click.secho(f"\nError: {e}", fg="red", err=True)
+            except Exception as e:
+                logger.exception("Unexpected error clearing conversation")
+                click.secho(f"\nError: {e}", fg="red", err=True)
+            else:
+                click.secho("Conversation history cleared.", fg="yellow")
             continue
 
         if user_input == "/model":
-            click.echo(click.style(f"Current model: {model_key}", fg="cyan"))
+            click.secho(f"Current model: {model_key}", fg="cyan")
             continue
 
         # Send message to the model
@@ -113,8 +140,11 @@ def chat(model_key: str, system: str | None) -> None:
             click.echo(
                 click.style("\nAI: ", fg="blue", bold=True) + AI.extract_response_text(response)
             )
+        except llm.errors.ModelError as e:
+            click.secho(f"\nError: {e}", fg="red", err=True)
         except Exception as e:
-            click.echo(click.style(f"\nError: {e}", fg="red"), err=True)
+            logger.exception("Unexpected error during chat")
+            click.secho(f"\nError: {e}", fg="red", err=True)
 
 
 if __name__ == "__main__":
