@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-04-15
+
 ### Added
 - Added `LICENSE` file (MIT).
 - Added `CHANGELOG.md`.
@@ -23,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Versioning**: Centralized version management in `src/privacyforms_ai/_version.py` read dynamically by `pyproject.toml`.
 - **Logging**: Replaced direct `stderr` prints with Python standard `logging` in `ai.py`.
 - **Linting**: Expanded `ruff` rules to include security (`S`), pathlib (`PTH`), return checks (`RET`), and ruff-specific rules (`RUF`).
-- **CLI UX**: Hardened `/clear` command so model errors are echoed to stderr instead of terminating the chat session.
+- **CLI UX**: Hardened `/clear` so model errors are echoed to stderr instead of terminating the chat session.
 - **CLI UX**: Improved EOF (Ctrl+D) handling to print a friendly "Goodbye!" message.
 - **CLI Style**: Replaced verbose `click.echo(click.style(...))` calls with `click.secho(...)`.
 - **Exception handling**: Catches `llm.errors.ModelError` specifically in CLI commands instead of broad `Exception`.
