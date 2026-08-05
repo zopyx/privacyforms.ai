@@ -84,7 +84,7 @@ class AI:
         model = llm.get_model(model_key)
         conversation = model.conversation()
         if system:
-            conversation.system = system  # type: ignore[attr-defined]
+            conversation.system = system  # type: ignore[attr-defined]  # ty: ignore[unresolved-attribute]
         return conversation
 
     @staticmethod
