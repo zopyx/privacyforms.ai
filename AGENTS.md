@@ -93,11 +93,10 @@ uv run python -m privacyforms_ai.cli --help
 
 ```python
 # Good
-def get_models() -> list[dict[str, str]]:
-    ...
+def get_models() -> list[dict[str, str]]: ...
 
-def process(data: str | None) -> None:
-    ...
+
+def process(data: str | None) -> None: ...
 ```
 
 ### Imports
