@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-08-10
+
+### Fixed
+- `setup.py` reported a stale hardcoded version (`0.1.2`); it now reads `__version__` from `src/privacyforms_ai/_version.py` via AST parsing, keeping `_version.py` the single source of truth and working inside isolated build environments.
+
 ## [0.1.5] - 2026-08-10
 
 ### Added
