@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-08-10
+
+### Added
+- Added GitHub Actions publish workflows for PyPI and TestPyPI using trusted publishing (OIDC), plus weekly Dependabot updates for GitHub Actions and pip.
+- Re-added `setup.py` for compatibility with legacy tooling.
+
+### Fixed
+- Added `# type: ignore` for `unresolved-attribute` on `conversation.system`.
+- Switched CI lint to `uvx ruff` (always-latest ruff) and reformatted for ruff 0.16.1.
+
+### Changed
+- Refreshed `uv.lock`.
+
 ## [0.1.4] - 2026-04-15
 
 ### Added
