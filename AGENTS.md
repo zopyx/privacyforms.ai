@@ -217,6 +217,23 @@ Jobs:
 2. **lint** - ruff format, ruff check, ty check
 3. **build** - Build package artifacts
 
+### Publish Workflows
+
+| Workflow | File | Trigger |
+|----------|------|---------|
+| Publish to TestPyPI | `.github/workflows/publish-testpypi.yml` | Tag push `v*` or manual `workflow_dispatch` |
+| Publish to PyPI | `.github/workflows/publish-pypi.yml` | Manual `workflow_dispatch` only |
+| Dependabot | `.github/dependabot.yml` | Weekly (github-actions + pip) |
+
+Both publish workflows use [trusted publishing](https://docs.pypi.org/trusted-publishers/) (OIDC) via `pypa/gh-action-pypi-publish` — no API tokens required. Setup once:
+
+1. Create GitHub environments `pypi` and `testpypi` in the repository settings (no required reviewers needed).
+2. On PyPI and TestPyPI, add a trusted publisher for the `zopyx/privacyforms.ai` repo:
+   - Workflow: `publish-pypi.yml` (PyPI) / `publish-testpypi.yml` (TestPyPI)
+   - Environment: `pypi` (PyPI) / `testpypi` (TestPyPI)
+
+Release flow: push a `vX.Y.Z` tag to publish to TestPyPI automatically, then trigger "Publish to PyPI" manually after verifying on TestPyPI.
+
 ## Release Workflow
 
 ### Make Targets
