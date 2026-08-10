@@ -17,8 +17,7 @@ def _read_version() -> str:
     tree = ast.parse(version_file.read_text())
     for node in tree.body:
         if isinstance(node, ast.Assign) and any(
-            isinstance(target, ast.Name) and target.id == "__version__"
-            for target in node.targets
+            isinstance(target, ast.Name) and target.id == "__version__" for target in node.targets
         ):
             return ast.literal_eval(node.value)
     raise RuntimeError("__version__ not found in src/privacyforms_ai/_version.py")
