@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-08-18
+
+### Added
+- Comprehensive coverage for `AI` and CLI branches pushing total coverage to 100% (new `tests/test_coverage_98.py`).
+
+### Changed
+- Added `# pragma: no cover` to `cli.py` main guard to exclude unreachable entry point from coverage.
+- Updated `.gitignore` to exclude `great-docs` build artifacts.
+
 ## [0.1.6] - 2026-08-10
 
 ### Fixed
