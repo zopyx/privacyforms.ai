@@ -147,5 +147,5 @@ def chat(model_key: str, system: str | None) -> None:
             click.secho(f"\nError: {e}", fg="red", err=True)
 
 
-if __name__ == "__main__":
-    cli()
+if __name__ == "__main__":  # pragma: no cover
+    cli()  # pragma: no cover
