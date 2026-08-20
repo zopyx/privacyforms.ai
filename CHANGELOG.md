@@ -13,10 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New `python -m privacyforms_ai` entry point via `__main__.py`.
 - `--version` flag on the root CLI.
 - GitHub Actions CI badge in README.md.
+- Multi-version testing via `tox.ini` for Python 3.12, 3.13, 3.14, 3.14t, 3.15, 3.15t (free-threaded).
+- Dependency vulnerability audit via `make audit` (uses `uv-secure`).
+- GitHub Actions CI now runs the `tox` matrix across Python 3.12, 3.13, 3.14, and 3.14t.
 
 ### Changed
 - Prompt logging now emits metadata only (`text_length`, `system_length`) at INFO level (`-v`); full prompt text is logged only at DEBUG level (`-vv`) to avoid leaking sensitive input.
-- README updated to describe the new logging levels, attachment options, and `python -m` usage.
+- README updated to describe the new logging levels, attachment options, `python -m` usage, and 100 % coverage target.
+- AGENTS.md project structure updated to include `__main__.py`, `tox.ini`, and `test_coverage_100.py`.
 - Removed redundant `setup.py`; build configuration now lives entirely in `pyproject.toml`.
 - Coverage target raised to 100 %; `make test-cov` now fails below 100 %.
 

@@ -36,6 +36,8 @@ dev = [
     "ty>=0.0.20",
     "build>=1.0",
     "wheel>=0.45",
+    "tox>=4.0",
+    "tox-uv>=1.0",
 ]
 
 [project.scripts]

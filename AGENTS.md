@@ -63,6 +63,12 @@ make check
 # Build release artifacts into dist/
 make dist
 
+# Audit dependencies for known vulnerabilities
+make audit
+
+# Run tests across supported Python versions with tox
+make tox
+
 # Upload release artifacts via twine
 make upload
 
@@ -148,6 +154,7 @@ def greet(name: str) -> None:
 ```
 src/privacyforms_ai/
 ├── __init__.py      # Package exports
+├── __main__.py      # python -m entry point
 ├── _version.py      # Package version
 ├── ai.py            # AI class for LLM interactions
 └── cli.py           # Click CLI commands
@@ -155,7 +162,8 @@ src/privacyforms_ai/
 tests/
 ├── conftest.py      # Pytest fixtures
 ├── test_ai.py       # Tests for AI class
-└── test_cli.py      # Tests for CLI commands
+├── test_cli.py      # Tests for CLI commands
+└── test_coverage_100.py  # Coverage-boosting edge-case tests
 ```
 
 ### Adding New Commands
@@ -216,6 +224,8 @@ Jobs:
 1. **test** - Run pytest with coverage
 2. **lint** - ruff format, ruff check, ty check
 3. **build** - Build package artifacts
+4. **audit** - Verify lockfile and audit dependencies with uv-secure
+5. **tox** - Run the full `tox` matrix (lint, type-check, tests) across Python 3.12, 3.13, 3.14, 3.14t
 
 ### Publish Workflows
 

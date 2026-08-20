@@ -11,7 +11,7 @@ A Python CLI tool for interacting with Large Language Models (LLMs) via Simon Wi
 - 🔧 **Simple CLI** - Easy-to-use command-line interface with colored output
 - 💬 **Interactive Chat** - Multi-turn conversations with context/memory
 - 🚀 **Multiple Providers** - Works with OpenAI, Anthropic, Moonshot, Ollama, and more
-- 🧪 **Well Tested** - Comprehensive test coverage
+- 🧪 **Well Tested** - 100 % test coverage enforced via `make test-cov`
 - ⚡ **Fast** - Built with modern Python tooling
 - 🔍 **Observable** - Optional verbose logging (`-v` for metadata, `-vv` for full prompt payloads) to inspect prompt payloads
 
