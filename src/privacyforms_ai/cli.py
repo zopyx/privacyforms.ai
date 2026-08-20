@@ -3,6 +3,7 @@
 import json
 import logging
 import sys
+from pathlib import Path
 
 import click
 import llm
@@ -52,15 +53,24 @@ def models(json_output: bool) -> None:
 @click.argument("model_key")
 @click.argument("prompt")
 @click.option("--system", "-s", help="System prompt")
-def prompt(model_key: str, prompt: str, system: str | None) -> None:
+@click.option(
+    "--attachment",
+    "-a",
+    multiple=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Attach a file (repeatable)",
+)
+def prompt(model_key: str, prompt: str, system: str | None, attachment: tuple[Path, ...]) -> None:
     """Send a prompt to a model.
 
     Example:
         privacyforms-ai prompt gpt-4o-mini "Hello, how are you?"
+        privacyforms-ai prompt gpt-4o-mini "Summarize this" -a document.pdf
     """
     try:
         model = AI.get_model(model_key)
-        response = AI.send_prompt(model, prompt, system=system)
+        attachments = [AI.create_attachment(path) for path in attachment] if attachment else None
+        response = AI.send_prompt(model, prompt, system=system, attachments=attachments)
         click.echo(AI.extract_response_text(response))
     except llm.errors.ModelError as e:
         raise click.ClickException(str(e)) from e
@@ -72,12 +82,20 @@ def prompt(model_key: str, prompt: str, system: str | None) -> None:
 @cli.command()
 @click.argument("model_key")
 @click.option("--system", "-s", help="System prompt to set the conversation context")
-def chat(model_key: str, system: str | None) -> None:
+@click.option(
+    "--attachment",
+    "-a",
+    multiple=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Attach a file (repeatable)",
+)
+def chat(model_key: str, system: str | None, attachment: tuple[Path, ...]) -> None:
     """Start an interactive chat session with a model.
 
     Example:
         privacyforms-ai chat gpt-4o-mini
         privacyforms-ai chat claude-sonnet-4-20250514 -s "You are a helpful coding assistant"
+        privacyforms-ai chat gpt-4o-mini -a document.pdf
 
     Commands:
         /quit, /exit, /q  - End the chat session
@@ -91,6 +109,8 @@ def chat(model_key: str, system: str | None) -> None:
     except Exception as e:
         logger.exception("Unexpected error starting chat")
         raise click.ClickException(str(e)) from e
+
+    attachments = [AI.create_attachment(path) for path in attachment] if attachment else None
 
     click.secho(f"Starting chat with model: {model_key}", fg="green", bold=True)
     if system:
@@ -136,7 +156,9 @@ def chat(model_key: str, system: str | None) -> None:
 
         # Send message to the model
         try:
-            response = AI.send_conversation_prompt(conversation, user_input)
+            response = AI.send_conversation_prompt(
+                conversation, user_input, attachments=attachments
+            )
             click.echo(
                 click.style("\nAI: ", fg="blue", bold=True) + AI.extract_response_text(response)
             )

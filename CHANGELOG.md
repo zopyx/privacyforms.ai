@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- CLI `prompt` command now supports `--attachment` / `-a` (repeatable) for file attachments.
+- CLI `chat` command now supports `--attachment` / `-a` (repeatable) for file attachments passed with every turn.
+- New `python -m privacyforms_ai` entry point via `__main__.py`.
+- `--version` flag on the root CLI.
+- GitHub Actions CI badge in README.md.
+
+### Changed
+- Prompt logging now emits metadata only (`text_length`, `system_length`) at INFO level (`-v`); full prompt text is logged only at DEBUG level (`-vv`) to avoid leaking sensitive input.
+- README updated to describe the new logging levels, attachment options, and `python -m` usage.
+- Removed redundant `setup.py`; build configuration now lives entirely in `pyproject.toml`.
+- Coverage target raised to 100 %; `make test-cov` now fails below 100 %.
+
 ## [0.1.7] - 2026-08-18
 
 ### Added

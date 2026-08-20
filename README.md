@@ -1,5 +1,9 @@
 # PrivacyForms AI
 
+[![Tests](https://github.com/zopyx/privacyforms.ai/actions/workflows/ci.yml/badge.svg?job=test)](https://github.com/zopyx/privacyforms.ai/actions/workflows/ci.yml)
+[![Lint](https://github.com/zopyx/privacyforms.ai/actions/workflows/ci.yml/badge.svg?job=lint)](https://github.com/zopyx/privacyforms.ai/actions/workflows/ci.yml)
+[![Build](https://github.com/zopyx/privacyforms.ai/actions/workflows/ci.yml/badge.svg?job=build)](https://github.com/zopyx/privacyforms.ai/actions/workflows/ci.yml)
+
 A Python CLI tool for interacting with Large Language Models (LLMs) via Simon Willison's `llm` library. Supports multiple providers including OpenAI, Anthropic, Moonshot, and Ollama.
 
 ## Features
@@ -9,7 +13,7 @@ A Python CLI tool for interacting with Large Language Models (LLMs) via Simon Wi
 - 🚀 **Multiple Providers** - Works with OpenAI, Anthropic, Moonshot, Ollama, and more
 - 🧪 **Well Tested** - Comprehensive test coverage
 - ⚡ **Fast** - Built with modern Python tooling
-- 🔍 **Observable** - Optional verbose logging (`-v` / `-vv`) to inspect prompt payloads
+- 🔍 **Observable** - Optional verbose logging (`-v` for metadata, `-vv` for full prompt payloads) to inspect prompt payloads
 
 ## Installation
 
@@ -85,6 +89,15 @@ privacyforms-ai prompt gpt-4o-mini "What is the capital of France?"
 
 # With system prompt
 privacyforms-ai prompt gpt-4o-mini "Explain recursion" --system "You are a computer science tutor"
+
+# With file attachment
+privacyforms-ai prompt gpt-4o-mini "Summarize this" -a document.pdf
+
+# Start interactive chat with file attachment
+privacyforms-ai chat gpt-4o-mini -a document.pdf
+
+# Use python -m
+python -m privacyforms_ai --help
 ```
 
 ### Interactive Chat

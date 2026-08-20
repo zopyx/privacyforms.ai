@@ -1,4 +1,4 @@
-"""Extra tests to push coverage to 98% - hit all remaining branches."""
+"""Extra tests to push coverage to 100% - hit all remaining branches."""
 
 import hashlib
 import json

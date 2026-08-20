@@ -170,6 +170,29 @@ class TestPromptLogging:
         assert payload == {
             "kind": "model",
             "model": "gpt-4o",
+            "system_length": 10,
+            "text_length": 5,
+        }
+
+    def test_send_prompt_logs_full_text_at_debug(self, caplog):
+        """Test that full prompt text is logged only at DEBUG level."""
+        caplog.set_level(logging.DEBUG)
+
+        class MockResponse:
+            text = "Hello back!"
+
+        class MockModel:
+            model_id = "gpt-4o"
+
+            def prompt(self, prompt, system=None):
+                return MockResponse()
+
+        AI.send_prompt(MockModel(), "Hello", system="Be helpful")
+
+        payload = parse_prompt_log(caplog)
+        assert payload == {
+            "kind": "model",
+            "model": "gpt-4o",
             "system": "Be helpful",
             "text": "Hello",
         }
@@ -204,7 +227,7 @@ class TestPromptLogging:
             ],
             "kind": "model",
             "model": "gpt-4o",
-            "text": "Inspect this",
+            "text_length": 12,
         }
 
     def test_prompt_with_attachment_logs_short_attachment_summary(self, caplog, tmp_path):
@@ -242,7 +265,7 @@ class TestPromptLogging:
             ],
             "kind": "model",
             "model": "gpt-4o",
-            "text": "Review this file",
+            "text_length": 16,
         }
 
 

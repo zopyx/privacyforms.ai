@@ -12,7 +12,6 @@ def pytest_configure() -> None:
     handler = logging.StreamHandler(sys.stderr)
     handler.setFormatter(logging.Formatter("%(message)s"))
     logger = logging.getLogger("privacyforms_ai")
-    logger.setLevel(logging.DEBUG)
     if not any(
         isinstance(h, logging.StreamHandler) and h.stream is sys.stderr for h in logger.handlers
     ):

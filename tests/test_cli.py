@@ -94,8 +94,8 @@ class TestPromptCommand:
             {
                 "kind": "model",
                 "model": "gpt-4o",
-                "text": "Hello!",
-                "system": "Be helpful",
+                "system_length": 10,
+                "text_length": 6,
             }
         ]
 
@@ -111,6 +111,31 @@ class TestPromptCommand:
         result = runner.invoke(cli, ["prompt", "invalid-model", "Hello!"])
         assert result.exit_code != 0
         assert "Error" in result.output or "Model not found" in result.output
+
+    def test_prompt_with_attachment(self, runner, monkeypatch, tmp_path):
+        """Test prompt with a file attachment."""
+        attached = []
+
+        class MockResponse:
+            text = "Attachment processed"
+
+        class MockModel:
+            model_id = "gpt-4o"
+
+            def prompt(self, prompt, system=None, attachments=None):
+                attached.extend(attachments or [])
+                return MockResponse()
+
+        monkeypatch.setattr("llm.get_model", lambda key: MockModel())
+
+        file_path = tmp_path / "doc.pdf"
+        file_path.write_bytes(b"%PDF-1.7")
+
+        result = runner.invoke(cli, ["prompt", "gpt-4o", "Summarize", "-a", str(file_path)])
+        assert result.exit_code == 0
+        assert "Attachment processed" in result.output
+        assert len(attached) == 1
+        assert attached[0].path == str(file_path)
 
 
 class TestCLI:
@@ -200,8 +225,8 @@ class TestChatCommand:
         assert prompt_logs == [
             {
                 "kind": "conversation",
-                "system": "Be helpful",
-                "text": "Hello",
+                "system_length": 10,
+                "text_length": 5,
             }
         ]
 
@@ -284,3 +309,56 @@ class TestChatCommand:
         result = runner.invoke(cli, ["chat", "gpt-4o"], input="\n\n/quit\n")
         assert result.exit_code == 0
         assert prompt_count[0] == 0  # No prompts sent for empty input
+
+    def test_chat_with_attachment(self, runner, monkeypatch, mock_conversation, tmp_path):
+        """Test chat with a startup attachment."""
+        attached = []
+
+        class TrackingConversation(mock_conversation):
+            def prompt(self, prompt, attachments=None):
+                attached.extend(attachments or [])
+                return super().prompt(prompt, attachments)
+
+        class MockModel:
+            def conversation(self, system=None):
+                return TrackingConversation()
+
+        monkeypatch.setattr("llm.get_model", lambda key: MockModel())
+
+        file_path = tmp_path / "doc.pdf"
+        file_path.write_bytes(b"%PDF-1.7")
+
+        result = runner.invoke(cli, ["chat", "gpt-4o", "-a", str(file_path)], input="Hi\n/quit\n")
+        assert result.exit_code == 0
+        assert len(attached) == 1
+        assert attached[0].path == str(file_path)
+
+
+class TestMainModule:
+    """Test cases for `python -m privacyforms_ai`."""
+
+    def test_main_function(self, monkeypatch):
+        """Test that main() invokes the CLI."""
+        calls = []
+        monkeypatch.setattr("privacyforms_ai.__main__.cli", lambda: calls.append(True))
+        from privacyforms_ai.__main__ import main
+
+        main()
+        assert calls
+
+    def test_main_module_entry_point(self, monkeypatch):
+        """Test that `python -m privacyforms_ai` executes the CLI."""
+        calls = []
+        monkeypatch.setattr("privacyforms_ai.cli.cli", lambda: calls.append(True))
+        import runpy
+        import sys
+
+        sys.modules.pop("privacyforms_ai.__main__", None)
+        runpy.run_module("privacyforms_ai", run_name="__main__")
+        assert calls
+
+    def test_main_module_import(self):
+        """Test that the __main__ module can be imported without errors."""
+        from privacyforms_ai import __main__
+
+        assert __main__ is not None

@@ -221,12 +221,24 @@ class AI:
         attachments: Sequence[Any] | None = None,
         model_key: str | None = None,
     ) -> None:
-        """Log the outbound prompt payload to stderr."""
-        payload: dict[str, Any] = {"kind": kind, "text": prompt}
-        if model_key:
-            payload["model"] = model_key
-        if system is not None:
-            payload["system"] = system
+        """Log the outbound prompt payload to stderr.
+
+        Full prompt text is only emitted at DEBUG level to avoid leaking
+        sensitive input at INFO level.
+        """
+        payload: dict[str, Any]
+        if logger.isEnabledFor(logging.DEBUG):
+            payload = {"kind": kind, "text": prompt}
+            if model_key:
+                payload["model"] = model_key
+            if system is not None:
+                payload["system"] = system
+        else:
+            payload = {"kind": kind, "text_length": len(prompt)}
+            if model_key:
+                payload["model"] = model_key
+            if system is not None:
+                payload["system_length"] = len(system)
         if attachments:
             payload["attachments"] = [AI._summarize_prompt_input(item) for item in attachments]
         logger.info("%s%s", AI._LOG_PREFIX, json.dumps(payload, sort_keys=True))
