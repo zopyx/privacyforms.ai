@@ -225,7 +225,6 @@ Jobs:
 2. **lint** - ruff format, ruff check, ty check
 3. **build** - Build package artifacts
 4. **audit** - Verify lockfile and audit dependencies with uv-secure
-5. **tox** - Run the full `tox` matrix (lint, type-check, tests) across Python 3.12, 3.13, 3.14, 3.14t
 
 ### Publish Workflows
 
