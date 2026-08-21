@@ -223,10 +223,6 @@ git push origin HEAD
 git push origin vX.Y.Z
 ```
 
-## API Design
-
-See [API_DESIGN.md](API_DESIGN.md) for the REST API and WebSocket design specification for multi-chat server functionality.
-
 ## Project Structure
 
 ```
