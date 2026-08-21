@@ -88,6 +88,99 @@ class AI:
         return conversation
 
     @staticmethod
+    def get_custom_model(
+        model_name: str,
+        api_url: str,
+        api_key: str,
+        *,
+        vision: bool = False,
+        can_stream: bool = True,
+    ) -> llm.models.Model:
+        """Create a model for an arbitrary OpenAI-compatible API endpoint.
+
+        Works with any endpoint speaking the OpenAI chat completions API
+        (e.g. DeepSeek, Groq, Together, vLLM, LiteLLM proxies).
+
+        Args:
+            model_name: The model name as expected by the endpoint (e.g., "deepseek-v4-pro")
+            api_url: Base URL of the endpoint (e.g., "https://api.deepseek.com")
+            api_key: API key for the endpoint
+            vision: Whether the model accepts image attachments
+            can_stream: Whether the endpoint supports streaming responses
+
+        Returns:
+            An llm Model instance usable with send_prompt() and friends.
+
+        Raises:
+            ValueError: If model_name, api_url, or api_key is empty.
+
+        Example:
+            >>> model = AI.get_custom_model(
+            ...     model_name="deepseek-v4-pro",
+            ...     api_url="https://api.deepseek.com",
+            ...     api_key=Path("deepseekv4.token").read_text().strip(),
+            ... )
+            >>> response = AI.send_prompt(model, "Hello!")
+            >>> print(AI.extract_response_text(response))
+        """
+        if not model_name:
+            raise ValueError("model_name must not be empty")
+        if not api_url:
+            raise ValueError("api_url must not be empty")
+        if not api_key:
+            raise ValueError("api_key must not be empty")
+
+        # Internal llm API (default_plugins), stable for llm>=0.28; the same class
+        # llm itself uses for its extra-openai-models.yaml feature.
+        from llm.default_plugins.openai_models import Chat
+
+        model = Chat(
+            model_id=f"custom/{model_name}",
+            key=api_key,
+            model_name=model_name,
+            api_base=api_url,
+            vision=vision,
+            can_stream=can_stream,
+        )
+        # With a custom api_base, no key-store/OPENAI_API_KEY lookup is needed;
+        # the explicitly passed key is used as-is. needs_key must stay truthy,
+        # though: llm's Chat.get_client() substitutes the literal "DUMMY_KEY"
+        # for any model with needs_key falsy, and get_key() only returns the
+        # explicitly set model.key when needs_key is set.
+        model.needs_key = "custom"  # type: ignore[assignment]
+        return cast(llm.models.Model, model)
+
+    @staticmethod
+    def get_custom_conversation(
+        model_name: str,
+        api_url: str,
+        api_key: str,
+        system: str | None = None,
+        *,
+        vision: bool = False,
+    ) -> llm.models.Conversation:
+        """Create a conversation with an arbitrary OpenAI-compatible API endpoint.
+
+        Args:
+            model_name: The model name as expected by the endpoint (e.g., "deepseek-v4-pro")
+            api_url: Base URL of the endpoint (e.g., "https://api.deepseek.com")
+            api_key: API key for the endpoint
+            system: Optional system prompt to set the conversation context
+            vision: Whether the model accepts image attachments
+
+        Returns:
+            A Conversation object for maintaining dialog state.
+
+        Raises:
+            ValueError: If model_name, api_url, or api_key is empty.
+        """
+        model = AI.get_custom_model(model_name, api_url, api_key, vision=vision)
+        conversation = model.conversation()
+        if system:
+            conversation.system = system  # type: ignore[attr-defined]  # ty: ignore[unresolved-attribute]
+        return conversation
+
+    @staticmethod
     def create_attachment(file_path: str | Path, mime_type: str | None = None) -> Any:
         """Create an attachment for use with LLM prompts.
 

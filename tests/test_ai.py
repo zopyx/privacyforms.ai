@@ -282,3 +282,131 @@ class TestMimeTypeDetection:
         """Test that unknown extensions fall back to octet-stream."""
         assert AI._detect_mime_type(Path("archive.unknown")) == "application/octet-stream"
         assert AI._detect_mime_type(Path("no_extension")) == "application/octet-stream"
+
+
+class MockCustomChat:
+    """Fake for llm.default_plugins.openai_models.Chat recording constructor kwargs."""
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        self.model_id = kwargs.get("model_id")
+        self.needs_key = "unset"
+        self.key = kwargs.get("key")
+
+    def get_key(self, explicit_key=None):
+        """Mirror llm's _get_key_mixin.get_key() semantics."""
+        if self.needs_key is None:
+            return None
+        if self.key is not None:
+            return self.key
+        return explicit_key
+
+    def conversation(self):
+        return MockCustomConversation(self)
+
+
+class MockCustomConversation:
+    """Fake conversation returned by MockCustomChat."""
+
+    def __init__(self, model):
+        self.model = model
+        self.system = None
+
+
+class TestGetCustomModel:
+    """Test cases for the get_custom_model method."""
+
+    def test_get_custom_model_success(self, monkeypatch):
+        """Test custom model creation with endpoint URL, key, and model name."""
+        monkeypatch.setattr("llm.default_plugins.openai_models.Chat", MockCustomChat)
+
+        model = AI.get_custom_model(
+            model_name="deepseek-v4-pro",
+            api_url="https://api.deepseek.com",
+            api_key="secret-token",
+        )
+
+        assert model.kwargs == {
+            "model_id": "custom/deepseek-v4-pro",
+            "key": "secret-token",
+            "model_name": "deepseek-v4-pro",
+            "api_base": "https://api.deepseek.com",
+            "vision": False,
+            "can_stream": True,
+        }
+        assert model.needs_key == "custom"
+        # The explicitly passed key must be what the model sends: llm's
+        # Chat.get_client() substitutes the literal "DUMMY_KEY" for models with
+        # needs_key falsy, and get_key() returns model.key only when needs_key
+        # is set (regression test for the DeepSeek 401).
+        assert model.get_key() == "secret-token"
+
+    def test_get_custom_model_vision_and_stream_flags(self, monkeypatch):
+        """Test that vision and can_stream flags are passed through."""
+        monkeypatch.setattr("llm.default_plugins.openai_models.Chat", MockCustomChat)
+
+        model = AI.get_custom_model(
+            model_name="deepseek-v4-pro",
+            api_url="https://api.deepseek.com",
+            api_key="secret-token",
+            vision=True,
+            can_stream=False,
+        )
+
+        assert model.kwargs["vision"] is True
+        assert model.kwargs["can_stream"] is False
+
+    @pytest.mark.parametrize(
+        ("model_name", "api_url", "api_key", "message"),
+        [
+            ("", "https://api.deepseek.com", "secret-token", "model_name"),
+            ("deepseek-v4-pro", "", "secret-token", "api_url"),
+            ("deepseek-v4-pro", "https://api.deepseek.com", "", "api_key"),
+        ],
+    )
+    def test_get_custom_model_empty_arguments(self, model_name, api_url, api_key, message):
+        """Test that empty required arguments raise ValueError."""
+        with pytest.raises(ValueError, match=message):
+            AI.get_custom_model(model_name=model_name, api_url=api_url, api_key=api_key)
+
+
+class TestGetCustomConversation:
+    """Test cases for the get_custom_conversation method."""
+
+    def test_get_custom_conversation_success(self, monkeypatch):
+        """Test custom conversation creation without a system prompt."""
+        monkeypatch.setattr("llm.default_plugins.openai_models.Chat", MockCustomChat)
+
+        conversation = AI.get_custom_conversation(
+            model_name="deepseek-v4-pro",
+            api_url="https://api.deepseek.com",
+            api_key="secret-token",
+        )
+
+        assert isinstance(conversation, MockCustomConversation)
+        assert conversation.model.model_id == "custom/deepseek-v4-pro"
+        assert conversation.system is None
+
+    def test_get_custom_conversation_with_system(self, monkeypatch):
+        """Test custom conversation creation with a system prompt."""
+        monkeypatch.setattr("llm.default_plugins.openai_models.Chat", MockCustomChat)
+
+        conversation = AI.get_custom_conversation(
+            model_name="deepseek-v4-pro",
+            api_url="https://api.deepseek.com",
+            api_key="secret-token",
+            system="Be helpful",
+        )
+
+        assert conversation.system == "Be helpful"
+
+    def test_get_custom_conversation_empty_argument(self, monkeypatch):
+        """Test that empty required arguments raise ValueError."""
+        monkeypatch.setattr("llm.default_plugins.openai_models.Chat", MockCustomChat)
+
+        with pytest.raises(ValueError, match="api_key"):
+            AI.get_custom_conversation(
+                model_name="deepseek-v4-pro",
+                api_url="https://api.deepseek.com",
+                api_key="",
+            )

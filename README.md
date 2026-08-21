@@ -136,6 +136,47 @@ You: /quit
 Goodbye!
 ```
 
+## Custom OpenAI-compatible Endpoints
+
+Besides the providers registered through `llm`, the Python API can talk to any
+OpenAI-compatible endpoint by passing an `(api_url, api_key, model_name)` triple —
+for example DeepSeek, Groq, Together, or a local vLLM/LiteLLM proxy:
+
+```python
+from pathlib import Path
+
+from privacyforms_ai import AI
+
+model = AI.get_custom_model(
+    model_name="deepseek-v4-pro",
+    api_url="https://api.deepseek.com",
+    api_key=Path("deepseekv4.token").read_text().strip(),
+)
+response = AI.send_prompt(model, "Hello!")
+print(AI.extract_response_text(response))
+```
+
+For multi-turn conversations use `AI.get_custom_conversation()`:
+
+```python
+conversation = AI.get_custom_conversation(
+    model_name="deepseek-v4-pro",
+    api_url="https://api.deepseek.com",
+    api_key=Path("deepseekv4.token").read_text().strip(),
+    system="You are a helpful assistant.",
+)
+response = AI.send_conversation_prompt(conversation, "Hello!")
+print(AI.extract_response_text(response))
+```
+
+Pass `vision=True` to `get_custom_model()` for endpoints whose models accept image
+attachments. Keep token files like `deepseekv4.token` out of version control — the
+repo's `.gitignore` already covers this one.
+
+A ready-made smoke test for the DeepSeek endpoint lives at `scripts/deepseek_smoke.py`
+(run with `uv run python scripts/deepseek_smoke.py`; requires a valid key in
+`deepseekv4.token` and network access).
+
 ## Development
 
 ### Setup

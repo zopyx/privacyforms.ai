@@ -15,7 +15,7 @@ PrivacyForms AI is a Python CLI tool for interacting with LLM models via the `ll
 | LLM Integration | `llm` (Simon Willison's library) |
 | Linting/Formatting | `ruff` |
 | Type Checking | `ty` (Google's fast type checker) |
-| Testing | `pytest` with `pytest-cov` |
+| Testing | `pytest` with `pytest-cov`, `pytest-random-order`, `pytest-xdist` |
 | Build | `setuptools` + `build` |
 
 ## Development Workflow
@@ -156,7 +156,7 @@ src/privacyforms_ai/
 ├── __init__.py      # Package exports
 ├── __main__.py      # python -m entry point
 ├── _version.py      # Package version
-├── ai.py            # AI class for LLM interactions
+├── ai.py            # AI class for LLM interactions (incl. custom OpenAI-compatible endpoints)
 └── cli.py           # Click CLI commands
 
 tests/

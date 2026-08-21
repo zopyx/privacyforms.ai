@@ -36,6 +36,7 @@ env/
 # Environment
 .env
 .envrc
+deepseekv4.token
 
 # pytest
 .pytest_cache/
