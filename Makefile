@@ -21,7 +21,7 @@ sync: ## Install dependencies with uv
 	UV_CACHE_DIR=$(UV_CACHE_DIR) uv sync --all-extras --dev
 
 test: sync ## Run tests (installs dev dependencies if needed)
-	UV_CACHE_DIR=$(UV_CACHE_DIR) uv run --dev pytest $(TEST_DIR)/
+	UV_CACHE_DIR=$(UV_CACHE_DIR) uv run --dev pytest $(TEST_DIR)/  
 
 test-cov: sync ## Run tests with coverage (installs dev dependencies if needed)
 	UV_CACHE_DIR=$(UV_CACHE_DIR) uv run --dev pytest $(TEST_DIR)/ --cov=$(PACKAGE_NAME) --cov-report=term --cov-report=html --cov-fail-under=100
